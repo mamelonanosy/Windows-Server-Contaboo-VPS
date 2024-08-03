@@ -1,35 +1,36 @@
 #!/bin/bash
 
+# Update and upgrade the system
 apt update -y && apt upgrade -y
 
+# Install necessary packages
 apt install grub2 wimtools ntfs-3g -y
 
-#Get the disk size in GB and convert to MB
-disk_size_gb=$(parted /dev/sda --script print | awk '/^Disk \/dev\/sda:/ {print int($3)}')
-disk_size_mb=$((disk_size_gb * 1024))
+# Define specific partition sizes in MB
+part1_size_mb=25600  # Size for the first partition
+part2_size_mb=25600  # Size for the second partition
 
-#Calculate partition size (25% of total size)
-part_size_mb=$((disk_size_mb / 4))
-
-#Create GPT partition table
+# Create a GPT partition table
 parted /dev/sda --script -- mklabel gpt
 
-#Create two partitions
-parted /dev/sda --script -- mkpart primary ntfs 1MB ${part_size_mb}MB
-parted /dev/sda --script -- mkpart primary ntfs ${part_size_mb}MB $((2 * part_size_mb))MB
+# Create the first partition
+parted /dev/sda --script -- mkpart primary ntfs 1MB ${part1_size_mb}MB
 
-#Inform kernel of partition table changes
+# Create the second partition
+parted /dev/sda --script -- mkpart primary ntfs ${part1_size_mb}MB $((part1_size_mb + part2_size_mb))MB
+
+# Inform the kernel of the partition table changes
+partprobe /dev/sda
+
+# Wait for the system to register the changes
+sleep 30
+partprobe /dev/sda
+
+sleep 30
 partprobe /dev/sda
 
 sleep 30
 
-partprobe /dev/sda
-
-sleep 30
-
-partprobe /dev/sda
-
-sleep 30 
 
 #Format the partitions
 mkfs.ntfs -f /dev/sda1
